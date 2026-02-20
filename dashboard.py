@@ -40,8 +40,6 @@ def get_weather():
     except Exception:
         return "--°C", "No weather"
 
-<<<<<<< HEAD
-=======
 def draw_time(draw, fonts, y=0, height=HEIGHT):
     font_big = ImageFont.truetype(FONT_BIG, int(height * 0.5))
     font_small = ImageFont.truetype(FONT_SMALL, int(height * 0.15))
@@ -63,7 +61,6 @@ AVAILABLE_MODULES = {
     "weather": draw_weather,
 }
 
->>>>>>> db81bd9 (second initial push)
 def create_dashboard():
     img = Image.new("RGB", (WIDTH, HEIGHT), hex_to_rgb(BG_COLOR))
     draw = ImageDraw.Draw(img)
@@ -79,15 +76,6 @@ def create_dashboard():
         y = i * module_height
         AVAILABLE_MODULES[module](draw, None, y=y, height=module_height)
 
-<<<<<<< HEAD
-    # Wetter
-    temp, desc = get_weather()
-    draw.text((50, 260), f"Wetter: {temp}", font=font_small, fill=(255,255,255))
-    draw.text((50, 320), desc, font=font_small, fill=(200,200,200))
-
-    img.save("/media/pi/FRAME/dashboard/dashboard.jpg")
-=======
     img.save(IMG_PATH)
->>>>>>> db81bd9 (second initial push)
 
 create_dashboard()
