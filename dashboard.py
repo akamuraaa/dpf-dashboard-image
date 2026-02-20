@@ -5,11 +5,6 @@ import urllib.request
 from dotenv import load_dotenv
 import os
 
-#tasklist:
-# - fill in README (purpose, prove, dependencies, how to)
-# - prove that it works
-# - add more modules
-
 load_dotenv()
 
 WIDTH    = int(os.getenv("WIDTH", 800))
