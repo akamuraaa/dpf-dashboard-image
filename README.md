@@ -1,79 +1,122 @@
-# dpf-dashboard-image
-creates an image of a dashboard periodicly for an digital picture frame.
+# 🖼️ Pi Dashboard
 
-from PIL import Image, ImageDraw, ImageFont
-import datetime
-import requests
-import urllib.request
-from dotenv import load_dotenv
-import os
+A configurable image dashboard for the Raspberry Pi. It automatically generates a JPG with selectable modules (time, weather, …) and saves it to a defined path – e.g. for a photo frame or e-ink display.
 
-load_dotenv()
+---
 
-WIDTH    = int(os.getenv("WIDTH", 800))
-HEIGHT   = int(os.getenv("HEIGHT", 480))
-FONT_BIG  = os.getenv("FONT_BIG", "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf")
-FONT_SMALL = os.getenv("FONT_SMALL", "/usr/share/fonts/truetype/freefont/FreeSans.ttf")
-LOCATION  = os.getenv("LOCATION", "Berlin")
-IMG_PATH  = os.getenv("IMG_PATH")
-BG_COLOR = os.getenv("BG_COLOR", "#0F1216")
-MODULES = os.getenv("MODULES", "time,weather").split(",")
-MODULES = [m.strip() for m in MODULES]
+## Requirements
 
-def hex_to_rgb(color):
-    color = color.strip()
-    if color.startswith("#"):
-        color = color.lstrip("#")
-        return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-    from PIL import ImageColor
-    return ImageColor.getrgb(color)
+**Install Python packages:**
+```bash
+pip install pillow requests python-dotenv
+```
 
-def get_weather():
-    try:
-        url = f"https://wttr.in/{LOCATION}?format=j1"
-        data = requests.get(url, timeout=5).json()
-        temp = data["current_condition"][0]["temp_C"]
-        desc = data["current_condition"][0]["weatherDesc"][0]["value"]
-        return f"{temp}°C", desc
-    except Exception:
-        return "--°C", "No weather"
+**Fonts** – FreeSans fonts are used by default and come pre-installed on Raspberry Pi OS. Alternatively DejaVu:
+```bash
+sudo apt install fonts-dejavu
+```
 
-def draw_time(draw, fonts, y=0, height=HEIGHT):
-    font_big = ImageFont.truetype(FONT_BIG, int(height * 0.5))
-    font_small = ImageFont.truetype(FONT_SMALL, int(height * 0.15))
+---
 
-    now = datetime.datetime.now()
-    draw.text((40, y + height * 0.05), now.strftime("%H:%M"), font=font_big, fill=(255,255,255))
-    draw.text((50, y + height * 0.65), now.strftime("%A %d %B %Y"), font=font_small, fill=(200,200,200))
+## Configuration
 
-def draw_weather(draw, fonts, y=0, height=HEIGHT):
-    font_big = ImageFont.truetype(FONT_BIG, int(height * 0.35))
-    font_small = ImageFont.truetype(FONT_SMALL, int(height * 0.12))
+All settings are defined in a `.env` file in the same directory as the script:
 
-    temp, desc = get_weather()
-    draw.text((50, y + height * 0.05), temp, font=font_big, fill=(255,255,255))
-    draw.text((50, y + height * 0.55), desc, font=font_small, fill=(200,200,200))
+```env
+WIDTH=800
+HEIGHT=480
+FONT_BIG=/usr/share/fonts/truetype/freefont/FreeSansBold.ttf
+FONT_SMALL=/usr/share/fonts/truetype/freefont/FreeSans.ttf
+LOCATION=Berlin
+IMG_PATH=/media/pi/FRAME/dashboard/dashboard.jpg
+BG_COLOR=#0F1216
+MODULES=time,weather
+```
+
+### All options at a glance
+
+| Variable | Description | Example |
+|---|---|---|
+| `WIDTH` | Image width in pixels | `800` |
+| `HEIGHT` | Image height in pixels | `480` |
+| `FONT_BIG` | Path to the large font | `/usr/share/fonts/truetype/freefont/FreeSansBold.ttf` |
+| `FONT_SMALL` | Path to the small font | `/usr/share/fonts/truetype/freefont/FreeSans.ttf` |
+| `LOCATION` | City for the weather query | `Berlin` |
+| `IMG_PATH` | Output path for the generated image | `/media/pi/FRAME/dashboard/dashboard.jpg` |
+| `BG_COLOR` | Background color (hex or CSS name) | `#0F1216` or `black` |
+| `MODULES` | Active modules, comma-separated | `time,weather` |
+
+---
+
+## Modules
+
+Active modules are listed comma-separated in `MODULES`. The order determines the layout from top to bottom. The available height is automatically split equally between all active modules.
+
+### Available modules
+
+| Module | Description |
+|---|---|
+| `time` | Current time and date |
+| `weather` | Current temperature and weather description |
+
+### Examples
+
+Time only, full screen:
+```env
+MODULES=time
+```
+
+Time on top, weather on bottom (50% height each):
+```env
+MODULES=time,weather
+```
+
+---
+
+## Usage
+
+```bash
+python dashboard.py
+```
+
+### Run automatically via cron job (e.g. every minute)
+
+```bash
+crontab -e
+```
+```
+* * * * * python3 /home/pi/dashboard/dashboard.py
+```
+
+---
+
+## Adding new modules
+
+1. Write a new function with the signature `draw_xyz(draw, fonts, y, height)`
+2. Register it in `AVAILABLE_MODULES`
+3. Add it to `MODULES` in your `.env`
+
+```python
+def draw_news(draw, fonts, y, height):
+    # your logic here
+    ...
 
 AVAILABLE_MODULES = {
     "time": draw_time,
     "weather": draw_weather,
+    "news": draw_news,  # new
 }
+```
 
-def create_dashboard():
-    img = Image.new("RGB", (WIDTH, HEIGHT), hex_to_rgb(BG_COLOR))
-    draw = ImageDraw.Draw(img)
+---
 
-    active = [m for m in MODULES if m in AVAILABLE_MODULES]
-    if not active:
-        print("no modules activated")
-        return
+## Project structure
 
-    module_height = HEIGHT // len(active)
+```
+dashboard/
+├── dashboard.py   # Main script
+├── .env           # Configuration (do not commit!)
+└── .env.example   # Template for configuration
+```
 
-    for i, module in enumerate(active):
-        y = i * module_height
-        AVAILABLE_MODULES[module](draw, None, y=y, height=module_height)
-
-    img.save(IMG_PATH)
-
-create_dashboard()
+> ⚠️ The `.env` file may contain personal paths and should **not** be committed to a Git repository. Instead, provide a `.env.example` with empty values as a template.
