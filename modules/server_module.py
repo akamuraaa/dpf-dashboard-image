@@ -400,7 +400,7 @@ def run(config):
     d["ping_host"] = config.get("ping_host", "1.1.1.1")
 
 
-    path = config["output_dir"] + "server.png"
+    path = config["output_dir"] + "server.jpg"
     fig  = render(d, config, eink=config.get("eink", False))
     save(fig, path, config)
 

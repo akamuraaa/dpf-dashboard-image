@@ -350,7 +350,7 @@ def run(config):
     data = fetch_weather(config["latitude"], config["longitude"])
     d    = parse(data)
     d["city"] = config.get("city","")
-    path = config["output_dir"] + "weather.png"
+    path = config["output_dir"] + "weather.jpg"
     fig  = render_eink(d, config) if config.get("eink") else render_color(d, config)
     save(fig, path, config)
 

@@ -173,7 +173,7 @@ def save(fig, path, cfg):
 def run(config):
     ensure_font()
     weather = fetch_temp(config["latitude"], config["longitude"])
-    path    = config["output_dir"] + "clock.png"
+    path    = config["output_dir"] + "clock.jpg"
     fig     = render(weather, config)
     save(fig, path, config)
 
