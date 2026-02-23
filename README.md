@@ -10,10 +10,10 @@ A configurable image dashboard generator for (mainly) Raspberry Pi. It automatic
 
 **Install Python packages:**
 ```bash
-sudo apt install python3-pillow python3-dotenv python3-matplotlib python3-urllib python3-datetime python3-numpy
+sudo apt install python3-pil python3-dotenv python3-matplotlib python3-numpy
 ```
 ```bash
-sudo dnf install python3-pillow python3-dotenv python3-matplotlib python3-urllib python3-datetime python3-numpy
+sudo dnf install python3-pil python3-dotenv python3-matplotlib python3-numpy
 ```
 ```bash
 sudo visudo -f /etc/sudoers.d/pi-docker

@@ -335,11 +335,11 @@ def save(fig, path, cfg):
     bg  = EINK["bg"] if cfg.get("eink") else C["bg"]
     W, H, DPI = cfg["width"], cfg["height"], cfg["dpi"]
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=DPI, facecolor=bg,
+    fig.savefig(buf, format='jpeg', pil_kwargs={'quality': 92}, dpi=DPI, facecolor=bg,
                 bbox_inches='tight', pad_inches=0)
     plt.close(fig)
     buf.seek(0)
-    img = Image.open(buf).resize((W, H), Image.LANCZOS)
+    img = Image.open(buf).convert("RGB").resize((W, H), Image.LANCZOS)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path)
     print(f"[Wetter] ✓ {path}")
