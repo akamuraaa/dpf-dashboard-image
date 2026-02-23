@@ -1,76 +1,76 @@
-from PIL import Image, ImageDraw, ImageFont
-import datetime
-import requests
-import urllib.request
-from dotenv import load_dotenv
 import os
+import sys
+import importlib
+import traceback
+import datetime
+from dotenv import load_dotenv
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "modules"))
+
+# load .env config
 load_dotenv()
 
-WIDTH    = int(os.getenv("WIDTH", 800))
-HEIGHT   = int(os.getenv("HEIGHT", 480))
-FONT_BIG  = os.getenv("FONT_BIG", "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf")
-FONT_SMALL = os.getenv("FONT_SMALL", "/usr/share/fonts/truetype/freefont/FreeSans.ttf")
-LOCATION  = os.getenv("LOCATION", "Berlin")
-IMG_PATH  = os.getenv("IMG_PATH")
-BG_COLOR = os.getenv("BG_COLOR", "#0F1216")
-MODULES = os.getenv("MODULES", "time,weather").split(",")
-MODULES = [m.strip() for m in MODULES]
+# map .env
+CONFIG = {
+    "width":   int(os.getenv("WIDTH",  800)),
+    "height":  int(os.getenv("HEIGHT", 480)),
+    "dpi":     int(os.getenv("DPI",    100)),
 
-def hex_to_rgb(color):
-    color = color.strip()
-    if color.startswith("#"):
-        color = color.lstrip("#")
-        return tuple(int(color[i:i+2], 16) for i in (0, 2, 4))
-    from PIL import ImageColor
-    return ImageColor.getrgb(color)
+    "output_dir": os.getenv("OUTPUT_DIR", "/mnt/usb/"),
 
-def get_weather():
-    try:
-        url = f"https://wttr.in/{LOCATION}?format=j1"
-        data = requests.get(url, timeout=5).json()
-        temp = data["current_condition"][0]["temp_C"]
-        desc = data["current_condition"][0]["weatherDesc"][0]["value"]
-        return f"{temp}°C", desc
-    except Exception:
-        return "--°C", "No weather"
+    "location":  os.getenv("LOCATION",  "Berlin"),
+    "city":      os.getenv("CITY",      "Berlin · DE"),
+    "latitude":  float(os.getenv("LATITUDE",  "52.52")),
+    "longitude": float(os.getenv("LONGITUDE", "13.41")),
+    "timezone":  os.getenv("TIMEZONE",  "Europe/Berlin"),
 
-def draw_time(draw, fonts, y=0, height=HEIGHT):
-    font_big = ImageFont.truetype(FONT_BIG, int(height * 0.5))
-    font_small = ImageFont.truetype(FONT_SMALL, int(height * 0.15))
+    "eink": os.getenv("EINK", "false").lower() == "true",
 
-    now = datetime.datetime.now()
-    draw.text((40, y + height * 0.05), now.strftime("%H:%M"), font=font_big, fill=(255,255,255))
-    draw.text((50, y + height * 0.65), now.strftime("%A %d %B %Y"), font=font_small, fill=(200,200,200))
+    "glances_host": os.getenv("GLANCES_HOST", "http://localhost:61208"),
+    "server_name":  os.getenv("SERVER_NAME",  "homelab-01"),
+    
+    # Whitelists (kommagetrennt in .env)
+    "docker_whitelist":  [x.strip() for x in os.getenv("DOCKER_WHITELIST",  "").split(",") if x.strip()],
+    "systemd_whitelist": [x.strip() for x in os.getenv("SYSTEMD_WHITELIST", "").split(",") if x.strip()],
+ 
+    # SSH für Docker + systemd Checks
+    # SSH_HOST = Hostname wie in ~/.ssh/config oder /etc/hosts
+    # SSH_USER = leer lassen wenn gleicher User wie auf dem Pi
+    "ssh_host": os.getenv("SSH_HOST", ""),
+    "ssh_user": os.getenv("SSH_USER", ""),
 
-def draw_weather(draw, fonts, y=0, height=HEIGHT):
-    font_big = ImageFont.truetype(FONT_BIG, int(height * 0.35))
-    font_small = ImageFont.truetype(FONT_SMALL, int(height * 0.12))
-
-    temp, desc = get_weather()
-    draw.text((50, y + height * 0.05), temp, font=font_big, fill=(255,255,255))
-    draw.text((50, y + height * 0.55), desc, font=font_small, fill=(200,200,200))
-
-AVAILABLE_MODULES = {
-    "time": draw_time,
-    "weather": draw_weather,
+    # Ping-Ziel (Internetverbindung prüfen)
+    "ping_host": os.getenv("PING_HOST", "1.1.1.1"),
 }
 
-def create_dashboard():
-    img = Image.new("RGB", (WIDTH, HEIGHT), hex_to_rgb(BG_COLOR))
-    draw = ImageDraw.Draw(img)
+# get activated modules
+MODULES = [m.strip() for m in os.getenv("MODULES", "clock,weather,server").split(",") if m.strip()]
 
-    active = [m for m in MODULES if m in AVAILABLE_MODULES]
-    if not active:
-        print("no modules activated")
+# main image generator
+def main():
+    if not MODULES:
+        print("[Dashboard] no modules activated")
         return
 
-    module_height = HEIGHT // len(active)
+    mode = "E-Ink" if CONFIG["eink"] else "Farbe"
+    print(f"[Dashboard] start – {datetime.datetime.now().strftime('%H:%M:%S')}  |  mode: {mode}")
+    print(f"[Dashboard] module: {', '.join(MODULES)}\n")
 
-    for i, module in enumerate(active):
-        y = i * module_height
-        AVAILABLE_MODULES[module](draw, None, y=y, height=module_height)
+    for name in MODULES:
+        try:
+            mod = importlib.import_module(f"{name}_module")
+            if not hasattr(mod, "run"):
+                print(f"[{name}] ✗ no 'run(config)' found – skipping")
+                continue
+            mod.run(CONFIG)
+        except ModuleNotFoundError:
+            print(f"[{name}] ✗ '{name}_module.py' not found – skipping")
+        except Exception:
+            print(f"[{name}] ✗ Error:")
+            traceback.print_exc()
 
-    img.save(IMG_PATH)
+    print(f"\n[Dashboard] finished – {datetime.datetime.now().strftime('%H:%M:%S')}")
 
-create_dashboard()
+
+if __name__ == "__main__":
+    main()
