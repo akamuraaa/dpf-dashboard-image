@@ -7,8 +7,9 @@ import urllib.request
 from datetime import datetime
 from PIL import Image
 import io, os
+from i18n import t
 
-# ── Farben (Farb-Modus) ───────────────────────────────────────────────────────
+# ── Colors in Color-Mode ───────────────────────────────────────────────────────
 C = {
     "bg":    "#0D1B2A",
     "blue":  "#4A90D9",
@@ -19,17 +20,6 @@ C = {
     "cold":  "#93C5FD",
     "warm":  "#FB923C",
     "hot":   "#F87171",
-}
-
-WEEKDAYS = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"]
-MONTHS   = ["Januar","Februar","März","April","Mai","Juni",
-            "Juli","August","September","Oktober","November","Dezember"]
-WMO = {
-    0:"Klar", 1:"Meist klar", 2:"Teilw. bewölkt", 3:"Bedeckt",
-    45:"Nebel", 51:"Leichter Niesel", 53:"Nieselregen",
-    61:"Leichter Regen", 63:"Regen", 65:"Starker Regen",
-    71:"Leichter Schnee", 73:"Schnee", 75:"Starker Schnee",
-    80:"Schauer", 81:"Starke Schauer", 95:"Gewitter", 99:"Heftiges Gewitter",
 }
 
 def temp_color(t, eink=False):
@@ -67,10 +57,16 @@ def fetch_temp(lat, lon):
     }, timeout=10)
     r.raise_for_status()
     cur = r.json()["current"]
+
+    wmo_key = str(cur["weathercode"])
+    desc = t(f"wmo.{wmo_key}")
+
+    if desc.startswith("["):
+        desc = f"Code {wmo_key}"
     return {
         "temp":  round(cur["temperature_2m"]),
         "feels": round(cur["apparent_temperature"]),
-        "desc":  WMO.get(cur["weathercode"], ""),
+        "desc":  desc,
     }
 
 # ── Render ──────────────────────────────────────────────────────────────
@@ -89,8 +85,11 @@ def render(weather, cfg):
     now    = datetime.now()
     hh     = now.strftime("%H")
     mm     = now.strftime("%M")
-    day    = WEEKDAYS[now.weekday()]
-    date_s = f"{now.day}. {MONTHS[now.month-1]} {now.year}"
+
+    day    = t("date.weekdays")[now.weekday()]
+    month  = t("date.months")[now.month - 1]
+    date_s = t("date.date_display", day=now.day, month=month, year=now.year)
+
     CX     = W / 2
 
     fig = plt.figure(figsize=(W/DPI, H/DPI), dpi=DPI, facecolor=bg)
@@ -98,63 +97,62 @@ def render(weather, cfg):
     ax.set_xlim(0, W); ax.set_ylim(0, H)
     ax.axis('off'); ax.set_facecolor(bg)
 
-    # Akzentlinien
+    # accent lines
     ax.plot([60, W-60], [H-4,  H-4],  color=colbl, lw=2, alpha=0.7, zorder=4)
     ax.plot([60, W-60], [4,    4],    color=colbl, lw=2, alpha=0.7, zorder=4)
 
-    # Wochentag – oben, ca. 88% Höhe
+    # weekday
     ax.text(CX, H*0.88, day.upper(), color=colbl, fontsize=28, fontweight='bold',
             va='center', ha='center', zorder=5)
 
-    # Datum – ca. 76% Höhe
+    # date
     ax.text(CX, H*0.76, date_s, color=col3, fontsize=17,
             va='center', ha='center', zorder=5)
 
-    # Trennlinie oben
+    # dash
     ax.plot([W*0.2, W*0.8], [H*0.69, H*0.69], color=col4, lw=0.8, zorder=4)
 
-    # Uhrzeit – Mitte, ca. 42% Höhe (visueller Schwerpunkt)
+    # clock
     ax.text(CX, H*0.46, f"{hh}:{mm}", color=col1, fontsize=142, fontweight='bold',
             va='center', ha='center', zorder=5)
 
-    # Trennlinie unten
+    # dash
     ax.plot([W*0.2, W*0.8], [H*0.19, H*0.19], color=col4, lw=0.8, zorder=4)
 
-    # Temperatur-Zeile – ca. 10% Höhe
+    # temperature
     TY = H * 0.10
 
-    # Aussen
-    ax.text(W*0.22, TY+14, "AUSSEN", color=col3, fontsize=9, fontweight='bold',
-            va='center', ha='center', zorder=5)
+    # outside
+    ax.text(W*0.22, TY+14, t("modules.clock.label_outside"), color=col3, fontsize=9,
+            fontweight='bold', va='center', ha='center', zorder=5)
     ax.text(W*0.22, TY-8,  f"{weather['temp']}  C", color=temp_color(weather['temp'], eink),
             fontsize=38, fontweight='bold', va='center', ha='center', zorder=5)
-    # Grad-Symbol manuell positionieren
     ax.text(W*0.22 + 52, TY+2, "o", color=temp_color(weather['temp'], eink),
             fontsize=18, fontweight='bold', va='center', ha='left', zorder=5)
 
-    # Trennstrich
+    # dash
     ax.plot([W*0.38, W*0.38], [TY-22, TY+22], color=col4, lw=0.8, zorder=4)
 
-    # Gefühlt
-    ax.text(W*0.50, TY+14, "GEFÜHLT", color=col3, fontsize=9, fontweight='bold',
-            va='center', ha='center', zorder=5)
+    # feelt temperature
+    ax.text(W*0.50, TY+14, t("modules.clock.label_feels"), color=col3, fontsize=9,
+            fontweight='bold', va='center', ha='center', zorder=5)
     ax.text(W*0.50, TY-8,  f"{weather['feels']}  C", color=col2,
             fontsize=38, fontweight='bold', va='center', ha='center', zorder=5)
     ax.text(W*0.50 + 52, TY+2, "o", color=col2,
             fontsize=18, fontweight='bold', va='center', ha='left', zorder=5)
 
-    # Trennstrich
+    # dash
     ax.plot([W*0.64, W*0.64], [TY-22, TY+22], color=col4, lw=0.8, zorder=4)
 
-    # Wetter
-    ax.text(W*0.80, TY+14, "WETTER", color=col3, fontsize=9, fontweight='bold',
-            va='center', ha='center', zorder=5)
+    # weather
+    ax.text(W*0.80, TY+14, t("modules.clock.label_weather"), color=col3, fontsize=9,
+            fontweight='bold', va='center', ha='center', zorder=5)
     ax.text(W*0.80, TY-8,  weather["desc"], color=col2, fontsize=16,
             fontweight='bold', va='center', ha='center', zorder=5)
 
     return fig
 
-# ── Speichern ─────────────────────────────────────────────────────────────────
+# ── save ─────────────────────────────────────────────────────────────────
 def save(fig, path, cfg):
     from eink_style import EINK
     bg  = EINK["bg"] if cfg.get("eink") else C["bg"]
@@ -167,9 +165,9 @@ def save(fig, path, cfg):
     img = Image.open(buf).convert("RGB").resize((W, H), Image.LANCZOS)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path)
-    print(f"[Uhrzeit] ✓ {path}")
+    print(f"[Clock] ✓ {path}")
 
-# ── Einstiegspunkt ────────────────────────────────────────────────────────────
+# ── entrypoint ────────────────────────────────────────────────────────────
 def run(config):
     ensure_font()
     weather = fetch_temp(config["latitude"], config["longitude"])
@@ -182,5 +180,5 @@ if __name__ == "__main__":
         "latitude": 52.52, "longitude": 13.41,
         "output_dir": "/mnt/usb/",
         "width": 800, "height": 480, "dpi": 100,
-        "eink": False,   # ← hier umschalten zum Testen
+        "eink": False,
     })

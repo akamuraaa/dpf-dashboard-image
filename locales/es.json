@@ -1,0 +1,120 @@
+{
+  "date": {
+    "weekdays": [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo"
+    ],
+    "weekdays_short": [
+      "Lu",
+      "Ma",
+      "Mi",
+      "Ju",
+      "Vi",
+      "Sa",
+      "Do"
+    ],
+    "months": [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre"
+    ],
+    "date_display": "{day} de {month} de {year}",
+    "format_short": "{day}/{month}/{year}",
+    "time_format": "%H:%M",
+    "date_display_short": "{weekday}, {day} de {month}"
+  },
+  "status": {
+    "online": "En línea",
+    "offline": "Sin conexión",
+    "unknown": "Desconocido",
+    "running": "En ejecución",
+    "stopped": "Detenido",
+    "restarting": "Reiniciando",
+    "error": "Error",
+    "loading": "Cargando…",
+    "last_update": "Última actualización"
+  },
+  "modules": {
+    "clock": {
+      "title": "Hora",
+      "label_outside": "EXTERIOR",
+      "label_feels": "SENSACIÓN",
+      "label_weather": "TIEMPO"
+    },
+    "weather": {
+      "title": "Tiempo",
+      "humidity": "Humed.",
+      "wind": "Viento",
+      "feels_like": "Sensación",
+      "today": "Hoy",
+      "sunrise": "Sal",
+      "sunset": "Pue",
+      "rain": "Lluvia",
+      "feels": "Sensac."
+    },
+    "system": {
+      "title": "Sistema",
+      "cpu": "CPU",
+      "memory": "Memoria",
+      "disk": "Almacenamiento",
+      "temperature": "Temperatura",
+      "uptime": "Tiempo activo"
+    },
+    "docker": {
+      "title": "Docker",
+      "container": "Contenedor",
+      "containers": "Contenedores",
+      "all_running": "Todos activos",
+      "stopped_count": "{count} detenido(s)"
+    },
+    "calendar": {
+      "title": "Calendario",
+      "no_events": "Sin eventos"
+    },
+    "network": {
+      "title": "Red",
+      "ip": "Dirección IP",
+      "ssid": "Wi-Fi"
+    },
+    "server": {
+      "uptime": "Activo",
+      "ram": "RAM",
+      "upload": "Sub",
+      "download": "Baj",
+      "section_systemd": "Systemd"
+    }
+  },
+  "wmo": {
+    "0": "Despejado",
+    "1": "Mayorm. despejado",
+    "2": "Parcialmente nublado",
+    "3": "Nublado",
+    "45": "Niebla",
+    "51": "Llovizna ligera",
+    "53": "Llovizna",
+    "61": "Lluvia ligera",
+    "63": "Lluvia",
+    "65": "Lluvia intensa",
+    "71": "Nieve ligera",
+    "73": "Nieve",
+    "75": "Nieve intensa",
+    "80": "Chubascos",
+    "81": "Chubascos fuertes",
+    "95": "Tormenta",
+    "99": "Tormenta severa"
+  }
+}

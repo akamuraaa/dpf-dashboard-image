@@ -1,0 +1,120 @@
+{
+  "date": {
+    "weekdays": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "weekdays_short": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "date_display": "{month} {day}, {year}",
+    "format_short": "{month}/{day}/{year}",
+    "time_format": "%I:%M %p",
+    "date_display_short": "{weekday}, {month} {day}"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "unknown": "Unknown",
+    "running": "Running",
+    "stopped": "Stopped",
+    "restarting": "Restarting",
+    "error": "Error",
+    "loading": "Loading…",
+    "last_update": "Last updated"
+  },
+  "modules": {
+    "clock": {
+      "title": "Clock",
+      "label_outside": "OUTSIDE",
+      "label_feels": "FEELS",
+      "label_weather": "WEATHER"
+    },
+    "weather": {
+      "title": "Weather",
+      "humidity": "Humid.",
+      "wind": "Wind",
+      "feels_like": "Feels like",
+      "today": "Today",
+      "sunrise": "Rise",
+      "sunset": "Set",
+      "rain": "Rain",
+      "feels": "Feels"
+    },
+    "system": {
+      "title": "System",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "disk": "Storage",
+      "temperature": "Temperature",
+      "uptime": "Uptime"
+    },
+    "docker": {
+      "title": "Docker",
+      "container": "Container",
+      "containers": "Containers",
+      "all_running": "All running",
+      "stopped_count": "{count} stopped"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "no_events": "No events"
+    },
+    "network": {
+      "title": "Network",
+      "ip": "IP Address",
+      "ssid": "Wi-Fi"
+    },
+    "server": {
+      "uptime": "Uptime",
+      "ram": "RAM",
+      "upload": "Up",
+      "download": "Down",
+      "section_systemd": "Systemd"
+    }
+  },
+  "wmo": {
+    "0": "Clear",
+    "1": "Mostly clear",
+    "2": "Partly cloudy",
+    "3": "Overcast",
+    "45": "Foggy",
+    "51": "Light drizzle",
+    "53": "Drizzle",
+    "61": "Light rain",
+    "63": "Rain",
+    "65": "Heavy rain",
+    "71": "Light snow",
+    "73": "Snow",
+    "75": "Heavy snow",
+    "80": "Showers",
+    "81": "Heavy showers",
+    "95": "Thunderstorm",
+    "99": "Severe thunderstorm"
+  }
+}

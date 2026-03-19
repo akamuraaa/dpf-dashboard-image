@@ -8,8 +8,9 @@ import numpy as np
 from datetime import datetime, timedelta
 from PIL import Image
 import io, os
+from i18n import t
 
-# ── Farben (Farb-Modus) ───────────────────────────────────────────────────────
+# ── Colors ───────────────────────────────────────────────────────
 C = {
     "bg":    "#0D1B2A",
     "blue":  "#4A90D9",
@@ -22,20 +23,6 @@ C = {
     "orange":"#FB923C",
     "green": "#4ADE80",
     "red":   "#F87171",
-}
-
-WEEKDAYS = ["Mo","Di","Mi","Do","Fr","Sa","So"]
-WMO = {
-    0:"Klar", 1:"Meist klar", 2:"Teilw. bewölkt", 3:"Bedeckt",
-    45:"Nebel", 51:"Leichter Niesel", 53:"Nieselregen",
-    61:"Leichter Regen", 63:"Regen", 65:"Starker Regen",
-    71:"Leichter Schnee", 73:"Schnee", 75:"Starker Schnee",
-    80:"Schauer", 81:"Starke Schauer", 95:"Gewitter", 99:"Heftiges Gewitter",
-}
-WMO_SHORT = {
-    0:"☀", 1:"🌤", 2:"⛅", 3:"☁",
-    45:"🌫", 51:"🌦", 53:"🌦", 61:"🌧", 63:"🌧", 65:"🌧",
-    71:"🌨", 73:"❄", 75:"❄", 80:"🌦", 81:"🌦", 95:"⛈", 99:"⛈",
 }
 
 # ── Font ──────────────────────────────────────────────────────────────────────
@@ -83,16 +70,27 @@ def parse(data):
         "wind":    cur["windspeed_10m"],
         "wcode":   cur["weathercode"],
         "precip":  cur.get("precipitation_probability") or 0,
-        "desc":    WMO.get(cur["weathercode"], ""),
+        "desc":    wmo_desc(cur["weathercode"]),
         "sunrise": daily["sunrise"][0].split("T")[1][:5],
         "sunset":  daily["sunset"][0].split("T")[1][:5],
         "daylight":f"{dl//60}h {dl%60}m",
         "daily":   daily,
     }
 
+# ── date helper functions ──────────────────────────────────────────────────────
+def localized_date_short(dt):
+    weekday = t("date.weekdays")[dt.weekday()]
+    month   = t("date.months")[dt.month - 1]
+    return t("date.date_display_short", weekday=weekday, day=dt.day, month=month)
+
+def wmo_desc(code):
+    key = str(code)
+    desc = t(f"wmo.{key}")
+    return desc if not desc.startswith("[") else f"Code {key}"
+
 # ── Icon ──────────────────────────────────────────────────────────────────────
-# cx, cy = Mittelpunkt des Icons in Pixel-Koordinaten
-# r      = Basisradius in Pixeln (z.B. 30 für großes Icon, 12 für kleines)
+# cx, cy = Center of the icon in pixel coordinates
+# r      = Base radius in pixels (e.g., 30 for a large icon, 12 for a small one)
 def draw_icon(ax, cx, cy, code, r=30, eink=False):
     sun_c   = C["gold"]   if not eink else "#444444"
     cloud_c = "#5A7A9A"   if not eink else "#AAAAAA"
@@ -163,7 +161,7 @@ def draw_bar(ax, x, y, w, h, pct, col, eink=False):
         ax.add_patch(FancyBboxPatch((x,y), max((pct/100)*w,4), h,
             boxstyle="round,pad=0", linewidth=0, facecolor=col, zorder=4))
 
-# ── Render Farbe ──────────────────────────────────────────────────────────────
+# ── Render color ──────────────────────────────────────────────────────────────
 def render_color(d, cfg):
     W, H, DPI = cfg["width"], cfg["height"], cfg["dpi"]
     now    = datetime.now()
@@ -180,24 +178,27 @@ def render_color(d, cfg):
     ax.text(28, H-28, date_s, color=C["text3"], fontsize=13, va='top', ha='left', zorder=5)
     ax.text(W-28, H-8, time_s, color=C["text1"], fontsize=38, fontweight='bold',
             va='top', ha='right', zorder=5)
+    ax.plot([0,W],[H-44,H-44], color=C["text4"], lw=0.8)
 
-    # ── Haupt-Icon + Temperatur ───────────────────────────────────────────────
-    # Icon links, Temperatur daneben – in der oberen Hälfte
+    # ── Main-Icon + Temperature ───────────────────────────────────────────────
     icon_cx, icon_cy = 90, H - 140
     draw_icon(ax, cx=icon_cx, cy=icon_cy, code=d["wcode"], r=55)
-
+ 
     ax.text(180, H-70, str(d["temp"]), color=C["text1"], fontsize=96,
             fontweight='bold', va='top', ha='left', zorder=5)
     ax.text(180 + len(str(d["temp"]))*54, H-66, "C", color=C["text2"], fontsize=32,
             va='top', ha='left', zorder=5)
-    # Grad-Zeichen
     ax.text(180 + len(str(d["temp"]))*54 - 10, H-60, "o", color=C["text2"], fontsize=16,
             va='top', ha='left', zorder=5)
     ax.text(180, H-175, d["desc"], color=C["text2"], fontsize=17, va='top', ha='left', zorder=5)
 
-    # ── Detail-Kacheln ────────────────────────────────────────────────────────
-    details = [("Gefühlt", f"{d['feels']} C"), ("Wind", f"{d['wind']:.0f} km/h"),
-               ("Luftf.",  f"{d['hum']}%"),    ("Regen", f"{d['precip']}%")]
+    # ── Detail tiles ────────────────────────────────────────────────────────
+    details = [
+        (t("modules.weather.feels"),   f"{d['feels']} C"),
+        (t("modules.weather.wind"),    f"{d['wind']:.0f} km/h"),
+        (t("modules.weather.humidity"),f"{d['hum']}%"),
+        (t("modules.weather.rain"),    f"{d['precip']}%"),
+    ]
     gx, gy = 460, H-60
     for i, (lbl, val) in enumerate(details):
         x = gx + (i % 2) * 160
@@ -207,53 +208,47 @@ def render_color(d, cfg):
         ax.text(x+140, y, val, color=C["text1"], fontsize=18, fontweight='bold',
                 va='top', ha='right', zorder=5)
 
-    # ── Sonne (ohne Emoji) ────────────────────────────────────────────────────
-    ax.text(460, H-175, f"Auf:  {d['sunrise']}", color=C["gold"],   fontsize=16,
-            fontweight='bold', va='top', ha='left', zorder=5)
-    ax.text(600, H-175, f"Unt: {d['sunset']}",  color=C["orange"], fontsize=16,
-            fontweight='bold', va='top', ha='left', zorder=5)
+    # ── Sun (without Emoji) ────────────────────────────────────────────────────
+    ax.text(460, H-175, f"{t('modules.weather.sunrise')}:  {d['sunrise']}", color=C["gold"],
+            fontsize=16, fontweight='bold', va='top', ha='left', zorder=5)
+    ax.text(600, H-175, f"{t('modules.weather.sunset')}: {d['sunset']}",   color=C["orange"],
+            fontsize=16, fontweight='bold', va='top', ha='left', zorder=5)
     ax.text(460, H-198, d["daylight"], color=C["text3"], fontsize=11, va='top', ha='left', zorder=5)
 
-    # ── Trennlinie ────────────────────────────────────────────────────────────
+    # ── dash ────────────────────────────────────────────────────────────
     divider_y = H - 232
     ax.plot([32, W-32], [divider_y, divider_y], color=C["text4"], lw=0.8)
 
-    # ── 5-Tage-Vorschau ───────────────────────────────────────────────────────
+    # ── 5-Day Forecast ───────────────────────────────────────────────────────
     col_w = (W - 64) / 5
     daily = d["daily"]
     for i in range(5):
         xc = 32 + col_w*i + col_w/2
         xl = 32 + col_w*i
-        # Heute-Highlight
         if i == 0:
             ax.add_patch(FancyBboxPatch((xl+4, 4), col_w-8, divider_y-12,
                 boxstyle="round,pad=4", linewidth=0,
                 facecolor=C["blue_a"], alpha=0.10, zorder=2))
-        # Wochentag
         day_n = now + timedelta(days=i)
-        lbl   = "Heute" if i == 0 else WEEKDAYS[day_n.weekday()]
+        lbl   = t("modules.weather.today") if i == 0 else t("date.weekdays_short")[day_n.weekday()]
         ax.text(xc, divider_y-14, lbl.upper(),
                 color=C["blue"] if i==0 else C["text3"],
                 fontsize=12, fontweight='bold', va='top', ha='center', zorder=5)
-        # Icon – kleinere Basisgröße
         draw_icon(ax, cx=xc, cy=divider_y-80, code=daily["weathercode"][i], r=22)
-        # Temperaturen
         hi = round(daily["temperature_2m_max"][i])
         lo = round(daily["temperature_2m_min"][i])
         ax.text(xc-6,  divider_y-122, f"{hi} C", color=C["text1"], fontsize=18,
                 fontweight='bold', va='top', ha='right', zorder=5)
         ax.text(xc+6,  divider_y-120, f"{lo} C", color=C["text4"], fontsize=14,
                 va='top', ha='left', zorder=5)
-        # Regenwahrscheinlichkeit
         rain_p = daily["precipitation_probability_max"][i] or 0
         ax.text(xc, divider_y-148, f"{rain_p}%",
                 color=C["blue_a"] if rain_p>50 else C["text3"],
                 fontsize=12, va='top', ha='center', zorder=5)
-        # Trennlinie
         if i > 0:
             ax.plot([xl+2, xl+2], [8, divider_y-8],
                     color=C["text4"], lw=0.6, zorder=3)
-
+ 
     return fig
 
 # ── Render E-Ink ──────────────────────────────────────────────────────────────
@@ -283,8 +278,12 @@ def render_eink(d, cfg):
             va='top', ha='left', zorder=5)
     ax.text(180, H-175, d["desc"], color=EINK["dark"], fontsize=17, va='top', ha='left', zorder=5)
 
-    details = [("Gefühlt",f"{d['feels']} C"),("Wind",f"{d['wind']:.0f} km/h"),
-               ("Luftf.",f"{d['hum']}%"),("Regen",f"{d['precip']}%")]
+    details = [
+        (t("modules.weather.feels"),   f"{d['feels']} C"),
+        (t("modules.weather.wind"),    f"{d['wind']:.0f} km/h"),
+        (t("modules.weather.humidity"),f"{d['hum']}%"),
+        (t("modules.weather.rain"),    f"{d['precip']}%"),
+    ]
     gx, gy = 460, H-60
     for i,(lbl,val) in enumerate(details):
         x = gx+(i%2)*160; y = gy-(i//2)*52
@@ -293,10 +292,10 @@ def render_eink(d, cfg):
         ax.text(x+140, y, val, color=EINK["black"],  fontsize=18, fontweight='bold',
                 va='top', ha='right', zorder=5)
 
-    ax.text(460, H-175, f"Auf: {d['sunrise']}", color=EINK["dark"], fontsize=16,
-            fontweight='bold', va='top', ha='left', zorder=5)
-    ax.text(600, H-175, f"Unt: {d['sunset']}", color=EINK["dark"], fontsize=16,
-            fontweight='bold', va='top', ha='left', zorder=5)
+    ax.text(460, H-175, f"{t('modules.weather.sunrise')}: {d['sunrise']}", color=EINK["dark"],
+            fontsize=16, fontweight='bold', va='top', ha='left', zorder=5)
+    ax.text(600, H-175, f"{t('modules.weather.sunset')}: {d['sunset']}",  color=EINK["dark"],
+            fontsize=16, fontweight='bold', va='top', ha='left', zorder=5)
 
     divider_y = H - 232
     ax.plot([32,W-32],[divider_y,divider_y], color=EINK["light"], lw=1)
@@ -311,7 +310,7 @@ def render_eink(d, cfg):
                 boxstyle="round,pad=4",linewidth=1.2,
                 edgecolor=EINK["dark"],facecolor=EINK["vlight"],zorder=2))
         day_n = now+timedelta(days=i)
-        lbl   = "Heute" if i==0 else WEEKDAYS[day_n.weekday()]
+        lbl   = t("modules.weather.today") if i==0 else t("date.weekdays_short")[day_n.weekday()]
         ax.text(xc, divider_y-14, lbl.upper(), color=EINK["black"], fontsize=12,
                 fontweight='bold', va='top', ha='center', zorder=5)
         draw_icon(ax, cx=xc, cy=divider_y-80, code=daily["weathercode"][i], r=22, eink=True)
@@ -329,7 +328,7 @@ def render_eink(d, cfg):
 
     return fig
 
-# ── Speichern ─────────────────────────────────────────────────────────────────
+# ── Save ─────────────────────────────────────────────────────────────────
 def save(fig, path, cfg):
     from eink_style import EINK
     bg  = EINK["bg"] if cfg.get("eink") else C["bg"]
@@ -344,7 +343,7 @@ def save(fig, path, cfg):
     img.save(path)
     print(f"[Wetter] ✓ {path}")
 
-# ── Einstiegspunkt ────────────────────────────────────────────────────────────
+# ── Entrypoint ────────────────────────────────────────────────────────────
 def run(config):
     ensure_font()
     data = fetch_weather(config["latitude"], config["longitude"])

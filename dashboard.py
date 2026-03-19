@@ -4,11 +4,14 @@ import importlib
 import traceback
 import datetime
 from dotenv import load_dotenv
+import i18n
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "modules"))
 
-# load .env config
+# loads .env config
 load_dotenv()
+
+i18n.load()
 
 # map .env
 CONFIG = {
@@ -29,17 +32,14 @@ CONFIG = {
     "glances_host": os.getenv("GLANCES_HOST", "http://localhost:61208"),
     "server_name":  os.getenv("SERVER_NAME",  "homelab-01"),
     
-    # Whitelists (kommagetrennt in .env)
+    # Whitelists
     "docker_whitelist":  [x.strip() for x in os.getenv("DOCKER_WHITELIST",  "").split(",") if x.strip()],
     "systemd_whitelist": [x.strip() for x in os.getenv("SYSTEMD_WHITELIST", "").split(",") if x.strip()],
  
-    # SSH für Docker + systemd Checks
-    # SSH_HOST = Hostname wie in ~/.ssh/config oder /etc/hosts
-    # SSH_USER = leer lassen wenn gleicher User wie auf dem Pi
     "ssh_host": os.getenv("SSH_HOST", ""),
     "ssh_user": os.getenv("SSH_USER", ""),
 
-    # Ping-Ziel (Internetverbindung prüfen)
+    # Ping
     "ping_host": os.getenv("PING_HOST", "1.1.1.1"),
 }
 

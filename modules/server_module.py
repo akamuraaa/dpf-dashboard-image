@@ -7,8 +7,9 @@ import urllib.request
 from datetime import datetime
 from PIL import Image
 import io, os, sys
+from i18n import t
 
-# ── Farben (Farb-Modus) ───────────────────────────────────────────────────────
+# ── colors ───────────────────────────────────────────────────────
 C = {
     "bg":    "#0D1B2A",
     "blue":  "#4A90D9",
@@ -41,9 +42,8 @@ def ensure_font():
     font_manager.fontManager.addfont(FONT_BOLD)
     plt.rcParams["font.family"] = "Atkinson Hyperlegible"
 
-# ── SSH Hilfsfunktion ─────────────────────────────────────────────────────────
+# ── SSH helper ─────────────────────────────────────────────────────────
 def ssh_run(config, command):
-    """Führt einen Befehl per SSH auf dem Server aus."""
     host   = config.get("ssh_host", "")
     user   = config.get("ssh_user", "")
     target = f"{user}@{host}" if user else host
@@ -55,7 +55,6 @@ def ssh_run(config, command):
 
 # ── Ping ──────────────────────────────────────────────────────────────────────
 def check_ping(host="1.1.1.1"):
-    """Pingt einen Host und gibt Latenz in ms zurück, oder None bei Fehler."""
     try:
         result = subprocess.run(
             ["ping", "-c", "1", "-W", "3", host],
@@ -72,18 +71,11 @@ def check_ping(host="1.1.1.1"):
 
 # ── Docker via SSH ────────────────────────────────────────────────────────────
 def check_docker(config, whitelist):
-    """
-    Fragt Docker-Status per SSH ab.
-    Gibt {name: True/False/None} zurück.
-    True  = läuft
-    False = gestoppt / nicht vorhanden
-    None  = SSH-Fehler
-    """
     results = {name: None for name in whitelist}
     if not whitelist:
         return results
     if not config.get("ssh_host"):
-        print("[Server] Docker: SSH_HOST nicht gesetzt – bitte in .env eintragen")
+        print("[Server] Docker: SSH_HOST not set – please fill in .env")
         return results
     try:
         out = ssh_run(config, "sudo docker ps -a --format '{{.Names}}:{{.Status}}'")
@@ -97,20 +89,16 @@ def check_docker(config, whitelist):
             # None wenn Container überhaupt nicht existiert, sonst True/False
             results[name] = found.get(name, False)
     except Exception as e:
-        print(f"[Server] Docker SSH-Fehler: {e}")
+        print(f"[Server] Docker SSH-Error: {e}")
     return results
 
 # ── systemd via SSH ───────────────────────────────────────────────────────────
 def check_systemd(config, whitelist):
-    """
-    Prüft systemd Services per SSH mit einem einzigen Kommando.
-    Gibt {name: True/False/None} zurück.
-    """
     results = {name: None for name in whitelist}
     if not whitelist:
         return results
     if not config.get("ssh_host"):
-        print("[Server] systemd: SSH_HOST nicht gesetzt – bitte in .env eintragen")
+        print("[Server] systemd: SSH_HOST not set – please fill in .env")
         return results
     try:
         # Alle Services auf einmal abfragen
@@ -121,7 +109,7 @@ def check_systemd(config, whitelist):
             if i < len(stati):
                 results[svc] = stati[i].strip() == "active"
     except Exception as e:
-        print(f"[Server] systemd SSH-Fehler: {e}")
+        print(f"[Server] systemd SSH-Error: {e}")
     return results
 
 # ── Glances API ───────────────────────────────────────────────────────────────
@@ -149,7 +137,7 @@ def fetch_metrics(config):
             if s.get("type") == "temperature_core":
                 cpu_temp = s.get("value"); break
 
-    # Netzwerk
+    # Network
     up_bps = down_bps = 0
     for iface in net:
         if iface.get("interface_name","") != "lo":
@@ -186,7 +174,7 @@ def fetch_metrics(config):
                        "total":round(d["size"]/1_073_741_824,1)} for d in disk],
     }
 
-# ── Hilfsfunktionen ───────────────────────────────────────────────────────────
+# ── helper functions ───────────────────────────────────────────────────────────
 def scol(v, eink=False):
     if eink: return "#000000"
     return C["red"] if v >= 90 else C["orange"] if v >= 70 else C["green"]
@@ -201,27 +189,26 @@ def draw_bar(ax, x, y, w, h, pct, eink=False):
         ax.add_patch(FancyBboxPatch((x, y), max((pct/100)*w, 4), h,
             boxstyle="round,pad=0", linewidth=0, facecolor=scol(pct), zorder=4))
 
-def draw_status(ax, x, y, name, ok, row_w, eink=False):
-    if eink:
-        from eink_style import draw_status_row_eink
-        draw_status_row_eink(ax, x, y, name, ok, row_w)
-        return
-    col   = C["green"] if ok is True else C["red"] if ok is False else C["text3"]
-    label = "OK"       if ok is True else "FEHLER" if ok is False else "?"
-    bg    = "#0A1E10"  if ok is True else "#1E0A0A" if ok is False else "#0F1820"
-    ax.add_patch(FancyBboxPatch((x, y-22), row_w, 20,
-        boxstyle="round,pad=2", linewidth=0, facecolor=bg, alpha=0.8, zorder=3))
-    ax.add_patch(FancyBboxPatch((x, y-22), 3, 20,
-        boxstyle="round,pad=0", linewidth=0, facecolor=col, zorder=5))
-    ax.add_patch(plt.Circle((x+14, y-12), 5, color=col, zorder=6))
-    if ok is False:
-        ax.add_patch(plt.Circle((x+14, y-12), 9, color=C["red"], alpha=0.25, zorder=5))
+def draw_status(ax, x, y, name, status, row_w, eink=False):
+    from eink_style import EINK
+    if status is True:
+        col   = EINK["black"] if eink else C["green"]
+        label = t("status.running")
+    elif status is False:
+        col   = EINK["black"] if eink else C["red"]
+        label = t("status.stopped")
+    else:
+        col   = EINK["mid"]   if eink else C["orange"]
+        label = t("status.unknown")
+ 
+    dot_c = EINK["black"] if eink else col
+    ax.add_patch(plt.Circle((x+8, y-10), 5, color=dot_c, zorder=6))
     ax.text(x+26,       y-4, name,  color=C["text1"], fontsize=13, fontweight='bold',
             va='top', ha='left', fontfamily='monospace', zorder=6)
     ax.text(x+row_w-6,  y-4, label, color=col, fontsize=11,
             va='top', ha='right', zorder=6)
 
-# ── Gemeinsame Layout-Funktion ────────────────────────────────────────────────
+# ── Shared Layout Function ────────────────────────────────────────────────
 def render(d, cfg, eink=False):
     from eink_style import EINK
     W, H, DPI = cfg["width"], cfg["height"], cfg["dpi"]
@@ -236,10 +223,10 @@ def render(d, cfg, eink=False):
     ax.set_xlim(0, W); ax.set_ylim(0, H)
     ax.axis('off'); ax.set_facecolor(bg)
 
-    lc  = EINK["vlight"] if eink else C["text4"]  # Linienfarbe
+    lc  = EINK["vlight"] if eink else C["text4"]  # line colors
     tc1 = EINK["mid"]    if eink else C["text3"]  # Labels
-    tc2 = EINK["dark"]   if eink else C["text2"]  # Beschriftungen
-    tc3 = EINK["black"]  if eink else C["text1"]  # Hauptwerte
+    tc2 = EINK["dark"]   if eink else C["text2"]  # Labelling
+    tc3 = EINK["black"]  if eink else C["text1"]  # Core Values
 
     # ── HEADER (H-8 bis H-44) ─────────────────────────────────────────────────
     HDR_LINE = H - 44   # = 436
@@ -255,12 +242,12 @@ def render(d, cfg, eink=False):
     name_col = EINK["black"] if eink else C["blue"]
     ax.text(34, H-6,  f"SERVER  ·  {cfg.get('server_name','').upper()}",
             color=name_col, fontsize=13, fontweight='bold', va='top', ha='left', zorder=5)
-    ax.text(34, H-24, f"Uptime: {d['uptime']}",
+    ax.text(34, H-24, f"{t('modules.server.uptime')}: {d['uptime']}",
             color=tc1, fontsize=11, va='top', ha='left', zorder=5)
     ax.text(W-12, H-4, datetime.now().strftime("%H:%M"),
             color=tc3, fontsize=38, fontweight='bold', va='top', ha='right', zorder=5)
 
-    # Ping – Mitte Header
+    # Ping
     ping_ms   = d.get("ping_ms")
     ping_host = d.get("ping_host", "1.1.1.1")
     if ping_ms is not None:
@@ -268,7 +255,7 @@ def render(d, cfg, eink=False):
         ping_lbl = f"{ping_ms} ms"
     else:
         ping_col = C["red"] if not eink else EINK["black"]
-        ping_lbl = "Offline"
+        ping_lbl = t("status.offline")
     if eink:
         ping_col = EINK["black"]
     ax.text(W/2, H-6,  ping_host, color=tc1, fontsize=10,
@@ -276,23 +263,23 @@ def render(d, cfg, eink=False):
     ax.text(W/2, H-22, ping_lbl,  color=ping_col, fontsize=16, fontweight='bold',
             va='top', ha='center', zorder=5)
 
-    # ── BODY: 3 Spalten ───────────────────────────────────────────────────────
-    BODY_TOP = HDR_LINE - 6    # 430 – wo Inhalte beginnen
-    BODY_BOT = 8               # unterer Rand
+    # ── BODY: 3 rows ───────────────────────────────────────────────────────
+    BODY_TOP = HDR_LINE - 6
+    BODY_BOT = 8
 
     ax.plot([262, 262], [BODY_BOT, HDR_LINE], color=lc, lw=0.8)
     ax.plot([534, 534], [BODY_BOT, HDR_LINE], color=lc, lw=0.8)
 
-    # ── SPALTE 1: System ──────────────────────────────────────────────────────
-    # Alles von oben nach unten mit festen Abständen
-    y = BODY_TOP  # Startpunkt, geht nach unten
+    # ── Row 1: System ──────────────────────────────────────────────────────
+    y = BODY_TOP
 
-    ax.text(16, y, "SYSTEM", color=tc1, fontsize=8, fontweight='bold',
-            va='top', ha='left', zorder=5)
+    ax.text(16, y, t("modules.system.title").upper(), color=tc1, fontsize=8,
+            fontweight='bold', va='top', ha='left', zorder=5)
     y -= 22
 
     # CPU
-    ax.text(16,  y,    "CPU", color=tc2, fontsize=12, va='top', ha='left', zorder=5)
+    ax.text(16,  y,    t("modules.system.cpu"), color=tc2, fontsize=12,
+            va='top', ha='left', zorder=5)
     ax.text(248, y+2,  f"{d['cpu_pct']}%", color=scol(d['cpu_pct'], eink),
             fontsize=20, fontweight='bold', va='top', ha='right', zorder=5)
     y -= 22
@@ -300,7 +287,8 @@ def render(d, cfg, eink=False):
     y -= 18
 
     # RAM
-    ax.text(16,  y,    "RAM", color=tc2, fontsize=12, va='top', ha='left', zorder=5)
+    ax.text(16,  y,    t("modules.server.ram"), color=tc2, fontsize=12,
+            va='top', ha='left', zorder=5)
     ax.text(248, y+2,  f"{d['mem_pct']}%", color=scol(d['mem_pct'], eink),
             fontsize=20, fontweight='bold', va='top', ha='right', zorder=5)
     y -= 22
@@ -315,24 +303,25 @@ def render(d, cfg, eink=False):
         tc_col = scol(d["cpu_temp"], eink) if not eink else EINK["black"]
         if not eink:
             tc_col = C["red"] if d["cpu_temp"] >= 80 else C["orange"] if d["cpu_temp"] >= 65 else C["green"]
-        ax.text(16, y, "CPU Temp", color=tc2, fontsize=12, va='top', ha='left', zorder=5)
+        ax.text(16, y, t("modules.system.temperature"), color=tc2, fontsize=12,
+                va='top', ha='left', zorder=5)
         ax.text(16, y-20, f"{d['cpu_temp']}C", color=tc_col, fontsize=26,
                 fontweight='bold', va='top', ha='left', zorder=5)
         y -= 52
 
-    # Netzwerk
+    # Network
     ax.plot([16, 248], [y+4, y+4], color=lc, lw=0.6)
     y -= 6
     up_c   = EINK["dark"] if eink else C["blue_a"]
     down_c = EINK["dark"] if eink else C["green"]
-    ax.text(16, y, f"Auf: {d['upload']}",   color=up_c,   fontsize=11,
+    ax.text(16, y, f"{t('modules.server.upload')}: {d['upload']}",   color=up_c,   fontsize=11,
             fontweight='bold', va='top', ha='left', zorder=5)
     y -= 18
-    ax.text(16, y, f"Ab:  {d['download']}", color=down_c, fontsize=11,
+    ax.text(16, y, f"{t('modules.server.download')}: {d['download']}", color=down_c, fontsize=11,
             fontweight='bold', va='top', ha='left', zorder=5)
     y -= 22
 
-    # Festplatten
+    # Hard drives
     ax.plot([16, 248], [y+4, y+4], color=lc, lw=0.6)
     y -= 6
     for disk in d["disks"][:3]:
@@ -350,27 +339,27 @@ def render(d, cfg, eink=False):
                 color=tc1, fontsize=9, va='top', ha='left', zorder=5)
         y -= 20
 
-    # ── SPALTE 2: Docker ──────────────────────────────────────────────────────
-    ax.text(278, BODY_TOP, "DOCKER", color=tc1, fontsize=8,
+    # ── Row 2: Docker ──────────────────────────────────────────────────────
+    ax.text(278, BODY_TOP, t("modules.docker.title").upper(), color=tc1, fontsize=8,
             fontweight='bold', va='top', ha='left', zorder=5)
-
+ 
     row_y = BODY_TOP - 22
     for name in cfg.get("docker_whitelist", []):
         draw_status(ax, 278, row_y, name, d["docker"].get(name), 240, eink=eink)
         row_y -= 30
 
-    # ── SPALTE 3: systemd ─────────────────────────────────────────────────────
-    ax.text(550, BODY_TOP, "SYSTEMD", color=tc1, fontsize=8,
+    # ── Row 3: systemd ─────────────────────────────────────────────────────
+    ax.text(550, BODY_TOP, t("modules.server.section_systemd").upper(), color=tc1, fontsize=8,
             fontweight='bold', va='top', ha='left', zorder=5)
-
+ 
     row_y = BODY_TOP - 22
     for name in cfg.get("systemd_whitelist", []):
         draw_status(ax, 550, row_y, name, d["systemd"].get(name), 222, eink=eink)
         row_y -= 30
-
+ 
     return fig
 
-# ── Speichern ─────────────────────────────────────────────────────────────────
+# ── Save ─────────────────────────────────────────────────────────────────
 def save(fig, path, cfg):
     from eink_style import EINK
     bg  = EINK["bg"] if cfg.get("eink") else C["bg"]
@@ -385,13 +374,13 @@ def save(fig, path, cfg):
     img.save(path)
     print(f"[Server] ✓ {path}")
 
-# ── Einstiegspunkt ────────────────────────────────────────────────────────────
+# ── Entrypoint ────────────────────────────────────────────────────────────
 def run(config):
     ensure_font()
     try:
         d = fetch_metrics(config)
     except requests.exceptions.ConnectionError:
-        print(f"[Server] ✗ Glances nicht erreichbar: {config.get('glances_host')}")
+        print(f"[Server] ✗ Glances not reachable: {config.get('glances_host')}")
         return
 
     d["docker"]  = check_docker(config,  config.get("docker_whitelist",  []))
@@ -407,13 +396,13 @@ def run(config):
 
 if __name__ == "__main__":
     run({
-        "glances_host": "http://192.168.1.100:61208",
+        "glances_host": "http://localhost:61208",
         "server_name":  "homelab-01",
         "output_dir":   "/mnt/usb/",
         "width": 800, "height": 480, "dpi": 100,
         "docker_whitelist":  ["deluge","nginx","portainer","vaultwarden"],
-        "systemd_whitelist": ["https","fail2ban","sshd","ufw"],
-        "ssh_host":     "lars-server",
+        "systemd_whitelist": ["https","fail2ban","sshd","firewalld"],
+        "ssh_host":     "homelab-01",
         "ssh_user":     "",
-        "eink": False,   # ← hier umschalten zum Testen
+        "eink": False,
     })
