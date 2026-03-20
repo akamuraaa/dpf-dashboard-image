@@ -96,6 +96,9 @@
       "upload": "Sub",
       "download": "Baj",
       "section_systemd": "Systemd"
+    },
+    "quote": {
+      "title": "Cita del Día"
     }
   },
   "wmo": {

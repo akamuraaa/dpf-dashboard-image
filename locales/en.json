@@ -96,6 +96,9 @@
       "upload": "Up",
       "download": "Down",
       "section_systemd": "Systemd"
+    },
+    "quote": {
+      "title": "Quote of the Day"
     }
   },
   "wmo": {

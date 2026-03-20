@@ -47,6 +47,7 @@ All settings are defined in a `.env` file in the same directory as the script:
 | `SSH_USER` | your server user name |  |
 | `PING_HOST` | The Server you want to Ping | `1.1.1.1` |
 | `MODULES` | Active modules, comma-separated | `clock,weather,server` |
+| `DASHBOARD_LANG` | language selection (de, en, es) | `en` |
 
 ---
 

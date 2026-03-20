@@ -5,6 +5,7 @@ import traceback
 import datetime
 from dotenv import load_dotenv
 import i18n
+import geocode
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "modules"))
 
@@ -12,6 +13,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "modules"))
 load_dotenv()
 
 i18n.load()
+
+# LATITUDE/LONGITUDE calculation
+_lat, _lon, _city = geocode.resolve(
+    os.getenv("LOCATION", "Berlin"),
+    cache_dir=os.getenv("CACHE_DIR", "/tmp"),
+)
 
 # map .env
 CONFIG = {
@@ -22,9 +29,9 @@ CONFIG = {
     "output_dir": os.getenv("OUTPUT_DIR", "/mnt/usb/"),
 
     "location":  os.getenv("LOCATION",  "Berlin"),
-    "city":      os.getenv("CITY",      "Berlin · DE"),
-    "latitude":  float(os.getenv("LATITUDE",  "52.52")),
-    "longitude": float(os.getenv("LONGITUDE", "13.41")),
+    "city":      _city,
+    "latitude":  _lat,
+    "longitude": _lon,
     "timezone":  os.getenv("TIMEZONE",  "Europe/Berlin"),
 
     "eink": os.getenv("EINK", "false").lower() == "true",
@@ -41,10 +48,12 @@ CONFIG = {
 
     # Ping
     "ping_host": os.getenv("PING_HOST", "1.1.1.1"),
+
+    "cache_dir": os.getenv("CACHE_DIR", "/tmp"),
 }
 
 # get activated modules
-MODULES = [m.strip() for m in os.getenv("MODULES", "clock,weather,server").split(",") if m.strip()]
+MODULES = [m.strip() for m in os.getenv("MODULES", "clock,weather,server,quote").split(",") if m.strip()]
 
 # main image generator
 def main():
@@ -52,7 +61,7 @@ def main():
         print("[Dashboard] no modules activated")
         return
 
-    mode = "E-Ink" if CONFIG["eink"] else "Farbe"
+    mode = "E-Ink" if CONFIG["eink"] else "Color"
     print(f"[Dashboard] start – {datetime.datetime.now().strftime('%H:%M:%S')}  |  mode: {mode}")
     print(f"[Dashboard] module: {', '.join(MODULES)}\n")
 
